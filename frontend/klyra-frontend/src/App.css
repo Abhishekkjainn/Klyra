@@ -1,0 +1,353 @@
+html {
+  position: relative;
+}
+
+html::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100%;
+  min-width: 100%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.65;
+  background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="6" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
+  background-repeat: repeat;
+}
+
+body {
+  min-height: 100vh;
+  min-width: 100vw;
+  margin: 0;
+  padding: 0;
+  font-family: "DM Sans";
+  overflow-x: hidden;
+  position: relative;
+  background:
+    linear-gradient(120deg, #ffffff 0%, #e9f5ec 18%, #ffffff 36%, #fdf6e3 54%, #e3f2fd 72%, #ffffff 100%),
+    radial-gradient(circle at 80% 20%, rgba(200,230,201,0.08) 0%, transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(255,236,179,0.08) 0%, transparent 70%);
+  background-blend-mode: lighten, normal, normal;
+}
+
+
+/*Header*/
+.header{
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.834);
+  backdrop-filter: blur(25px);
+  border-radius: 40px;
+  padding: 4px;
+  border: 1px solid rgb(42, 42, 42);
+  display: flex;
+  justify-content: center;
+  align-items: center; 
+  z-index: 1000;
+}
+.company{
+  padding-left: 16px;
+  padding-right: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.mainlogo{
+  width: 20px;
+}
+.companytag{
+  margin-left: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 18px ;
+}
+.links{
+  padding-left: 12px;
+  padding-right: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.link{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  margin-left: 4px;
+  margin-right: 4px;
+  cursor: pointer;
+}
+.linkicon{
+  width: 12px;
+  margin-right: 4px;
+  filter: invert(0.8);
+}
+.linktag{
+  color: rgb(208, 208, 208);
+  font-size: 12px;
+  /* font-weight: 600; */
+}
+.link:hover .linktag{
+  transition: 0.4s linear;
+  color: white;
+}
+
+/*Actions*/
+.actions{
+  width: max-content;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(123, 123, 123);
+  padding: 4px;
+  border-radius: 40px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.action{
+  height:calc(100% - 4px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-color: black;
+  margin: 2px;
+}
+
+/*Page1*/
+.page1{
+  width: 100vw;
+  min-height: 80vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+.page1title{
+  font-size: 72px;
+  font-weight: 700;
+  text-align: center;
+}
+.page1subtitle{
+  font-size: 18px;
+  font-weight: 500;
+  color: grey;
+}
+.page1tag{
+  margin-top: 100px;
+  width: max-content;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgb(194, 194, 194);
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  padding-right: 12px;
+  border-radius: 40px;
+}
+.tagicon{
+  width: 25px;
+  margin-right: 4px;
+}
+.tagtext{
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/*Action Buttons*/
+.actionbuttons{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+}
+.primarybutton{
+  background-color: royalblue;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 12px;
+  padding-top: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.buttonicon{
+  width: 14px;
+  margin-right: 12px;
+}
+.buttontag{
+  color: white;
+  font-weight: 600;
+}
+.secondarybutton{
+  cursor: pointer;
+  background-color: #eaeaea;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 12px;
+  padding-top: 12px;
+  border-radius: 8px;
+}
+.space{
+  width: 20px;
+}
+.secondbuttonicon{
+  width: 14px;
+  margin-right: 6px;
+  filter: invert(0.5);
+}
+.secondbuttontag{
+  color: rgb(85, 85, 85);
+  font-weight: 600;
+}
+
+/*Page2*/
+.page2{
+  width: 100%;
+  height: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 40px;
+}
+.page2banner{
+  width: 90%;
+  height: auto;
+  border-radius: 40px;
+  filter: invert(1);
+}
+
+
+/*signup page*/
+.signuppage{
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+/*Sidebanner*/
+.sideimage{
+  width: 50%;
+  height: 100%;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.sideimageimage{
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
+  /* padding-left: 20px;
+  padding-top: 20px;
+  padding-bottom: 20px; */
+  border-radius: 20px;
+}
+.mainform{
+  width: 50%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column; 
+}
+.signuptitle{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  color: black;
+}
+.signuptitlelogo{
+  width: 40px;
+}
+.signuptitletext{
+  font-size: 48px;
+  font-weight:600 ;
+  margin-left: 12px;
+}
+.signupheading{
+  font-size: 18px;
+  font-weight: 500;
+  color: rgb(88, 88, 88);
+}
+.formdiv{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  width: 100%;
+  height: max-content;
+  margin-top: 40px;
+}
+.inputdiv{
+  width: 50%;
+  /* background-color: #2B87F4; */
+  display: flex;
+  justify-content: start;
+  align-items: start;
+  flex-direction: column;
+  margin-top: 20px;
+}
+.label{
+  font-size: 12px;
+  color: black;
+  font-weight: 500;
+  margin-left: 8px;
+  margin-bottom: 2px;
+}
+.inp{
+  width: 90%;
+  height: 40px;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  padding-left: 12px;
+  padding-right: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: "DM Sans";
+}
+.inp::placeholder{
+  color: rgb(179, 179, 179);
+}
+.space2{
+  height: 30px;
+}
+.alreadyaccount{
+  margin-top: 20px;
+  color: grey;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.buttonsectionsignup{
+  width: max-content;
+  height: max-content;
+  margin-top: 0px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+/*Dashboard*/
