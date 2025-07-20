@@ -348,6 +348,11 @@ body {
   justify-content: center;
   align-items: center;
 }
+.primarybutton.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
 
 
 /*Dashboard*/
