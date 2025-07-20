@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import Header from './components/header'
 
@@ -11,15 +11,49 @@ import Login from './pages/login'
 import Dashboard from './pages/dashboard'
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+
+  const refreshSession = () => {
+    setSessionLoading(true);
+    const sessionId = localStorage.getItem('session_id');
+    if (!sessionId) {
+      setUser(null);
+      setSessionLoading(false);
+      return;
+    }
+    fetch('https://klyra-backend.vercel.app/check-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user && data.user.name) {
+          setUser({ ...data.user, sessionId });
+        } else {
+          setUser(null);
+        }
+        setSessionLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setSessionLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    refreshSession();
+  }, []);
 
   return (
     <BrowserRouter>
       
       <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route path="/signup" element={<Signup/>}/>
-        <Route path="/login" element={<Login/>}/>
-        <Route path="/dashboard" element={<Dashboard/>}/>
+        <Route path="/" element={<Homepage user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />} />
+        <Route path="/signup" element={<Signup user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
+        <Route path="/login" element={<Login user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
+        <Route path="/dashboard" element={<Dashboard user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
         {/* Add more routes here as needed */}
       </Routes>
     </BrowserRouter>

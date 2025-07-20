@@ -1,10 +1,11 @@
+import { Link } from "react-router-dom";
 export default function Header(){
     return (
         <div className="header">
-        <div className="company">
+        <Link className="company" to={"/"}>
           <img src="/klyralogo.png" alt="mainlogo" className="mainlogo" />
           <div className="companytag">Klyra</div>
-        </div>
+        </Link>
         <div className="links">
           <div className="link">
             <img src="/home.png" alt="" className="linkicon" />

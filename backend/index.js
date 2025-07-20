@@ -139,28 +139,21 @@ app.post('/login', async (req, res) => {
 
 app.post('/logout', async (req, res) => {
   try {
-    const { email, password, sessionId } = req.body;
-    if (!email || !password || !sessionId) {
-      return res.status(400).json({ error: 'Email, password, and sessionId are required.' });
-    }
-    // Validate user
-    const userRef = db.collection('users').doc(email);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-    const userData = userDoc.data();
-    if (userData.password !== password) {
-      return res.status(401).json({ error: 'Incorrect password.' });
+    const { sessionId } = req.body;
+    console.log('Logout requested for sessionId:', sessionId);
+    if (!sessionId) {
+      return res.status(400).json({ error: 'SessionId is required.' });
     }
     // Validate session
     const sessionRef = db.collection('sessions').doc(sessionId);
     const sessionDoc = await sessionRef.get();
-    if (!sessionDoc.exists || sessionDoc.data().email !== email) {
+    if (!sessionDoc.exists) {
+      console.log('Session not found for sessionId:', sessionId);
       return res.status(400).json({ error: 'Invalid session.' });
     }
     // Delete session
     await sessionRef.delete();
+    console.log('Session deleted for sessionId:', sessionId);
     return res.status(200).json({ message: 'Logout successful.' });
   } catch (error) {
     console.error('Logout error:', error);
