@@ -3,6 +3,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const cors = require('cors');
 const { db } = require('./firebase');
+const { v4: uuidv4 } = require('uuid');
 app.use(express.json()); // Add this to parse JSON bodies
 app.use(cors()); // Enable CORS
 
@@ -43,14 +44,155 @@ app.post('/signup', async (req, res) => {
       password, // Note: In production, hash the password before storing!
     });
 
+    // Remove any existing session for this email
+    const sessionsRef = db.collection('sessions');
+    const existingSessions = await sessionsRef.where('email', '==', email).get();
+    const batch = db.batch();
+    existingSessions.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    // Auto-login: create session
+    const sessionId = uuidv4();
+    await sessionsRef.doc(sessionId).set({
+      sessionId,
+      email,
+      createdAt: new Date().toISOString(),
+    });
+
     return res.status(201).json({
       apikey,
       email,
       name,
-      password // Note: In production, do not return the password in the response!
+      sessionId,
     });
   } catch (error) {
     console.error('Signup error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  try {
+    let { email, password } = req.body;
+
+    // Validate presence and type
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email and password must be strings.' });
+    }
+
+    email = email.trim();
+    password = password.trim();
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required and cannot be empty.' });
+    }
+
+    // Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
+    }
+
+    const userRef = db.collection('users').doc(email);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found. Please sign up first.' });
+    }
+
+    const userData = userDoc.data();
+    if (!userData.password) {
+      return res.status(500).json({ error: 'User record is corrupted. Please contact support.' });
+    }
+
+    if (userData.password !== password) {
+      return res.status(401).json({ error: 'Incorrect password.' });
+    }
+
+    // Remove password from response for security
+    const { password: _, ...userWithoutPassword } = userData;
+
+    // Remove any existing session for this email
+    const sessionsRef = db.collection('sessions');
+    const existingSessions = await sessionsRef.where('email', '==', email).get();
+    const batch = db.batch();
+    existingSessions.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    // Create session
+    const sessionId = uuidv4();
+    await sessionsRef.doc(sessionId).set({
+      sessionId,
+      email,
+      createdAt: new Date().toISOString(),
+    });
+
+    return res.status(200).json({
+      message: 'Login successful.',
+      user: userWithoutPassword,
+      sessionId,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Internal server error. Please try again later.' });
+  }
+});
+
+app.post('/logout', async (req, res) => {
+  try {
+    const { email, password, sessionId } = req.body;
+    if (!email || !password || !sessionId) {
+      return res.status(400).json({ error: 'Email, password, and sessionId are required.' });
+    }
+    // Validate user
+    const userRef = db.collection('users').doc(email);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    const userData = userDoc.data();
+    if (userData.password !== password) {
+      return res.status(401).json({ error: 'Incorrect password.' });
+    }
+    // Validate session
+    const sessionRef = db.collection('sessions').doc(sessionId);
+    const sessionDoc = await sessionRef.get();
+    if (!sessionDoc.exists || sessionDoc.data().email !== email) {
+      return res.status(400).json({ error: 'Invalid session.' });
+    }
+    // Delete session
+    await sessionRef.delete();
+    return res.status(200).json({ message: 'Logout successful.' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/check-session', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'SessionId is required.' });
+    }
+    const sessionRef = db.collection('sessions').doc(sessionId);
+    const sessionDoc = await sessionRef.get();
+    if (!sessionDoc.exists) {
+      return res.status(401).json({ error: 'Session is invalid or expired.' });
+    }
+    const { email } = sessionDoc.data();
+    const userRef = db.collection('users').doc(email);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    const userData = userDoc.data();
+    const { password: _, ...userWithoutPassword } = userData;
+    return res.status(200).json({
+      message: 'Session is valid.',
+      user: userWithoutPassword,
+    });
+  } catch (error) {
+    console.error('Check session error:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 });
