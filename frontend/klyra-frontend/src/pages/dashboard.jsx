@@ -1,13 +1,7 @@
 import Actions from "../components/actions";
 import Header from "../components/header";
-import UsePageAnalytics from "../functions";
 
 export default function Dashboard({ user, sessionLoading, refreshSession }) {
-    UsePageAnalytics({
-        apikey: user?.apikey, // or wherever you store the apikey
-        pagename: "dashboard",
-        enabled: !!user
-    });
     return (
         <>
             

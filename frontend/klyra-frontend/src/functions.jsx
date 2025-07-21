@@ -1,14 +1,12 @@
 // src/hooks/usePageAnalytics.js
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 export default function usePageAnalytics({ apikey, pagename, enabled = true }) {
   const startTimeRef = useRef(Date.now());
+  const handlerRef = useRef();
 
   useEffect(() => {
-    console.log('[usePageAnalytics] Hook called', { apikey, pagename, enabled });
-    if (!enabled || !apikey || !pagename) return;
-
-    const sendAnalytics = () => {
+    handlerRef.current = () => {
       const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
       const payload = {
         apikey,
@@ -16,22 +14,21 @@ export default function usePageAnalytics({ apikey, pagename, enabled = true }) {
         startTime: new Date(startTimeRef.current).toISOString(),
         duration,
       };
-      console.log('[usePageAnalytics] Sending analytics:', payload);
       fetch("http://localhost:3000/updatePageViewCount", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-        .then((res) => {
-          console.log('[usePageAnalytics] Analytics sent, response status:', res.status);
-        })
-        .catch((error) => {
-          console.error("[usePageAnalytics] Analytics error:", error);
+        .then(() => {
+          // Minimal log for confirmation
+          console.log("[Analytics] Sent");
         });
     };
+  }, [apikey, pagename, enabled]);
 
+  useEffect(() => {
+    if (!enabled || !apikey || !pagename) return;
+    const sendAnalytics = () => handlerRef.current();
     window.addEventListener("beforeunload", sendAnalytics);
     return () => {
       sendAnalytics();
@@ -39,3 +36,25 @@ export default function usePageAnalytics({ apikey, pagename, enabled = true }) {
     };
   }, [apikey, pagename, enabled]);
 }
+
+// Button click analytics function
+export function sendButtonClickAnalytics({ apikey, buttonName }) {
+  if (!apikey || !buttonName) return;
+  const payload = {
+    apikey,
+    buttonName,
+    timestamp: new Date().toISOString(),
+  };
+  fetch("http://localhost:3000/updateButtonClickAnalytics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then(() => {
+      // Minimal log for confirmation
+      console.log(`[Analytics] Button click sent for ${buttonName}`);
+    });
+}
+
+
+

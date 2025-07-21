@@ -2,7 +2,10 @@ import {Link} from 'react-router-dom';
 import Header from '../components/header';
 import Actions from '../components/actions';
 import { useEffect, useState } from 'react';
+
+
 export default function Page1({ user, sessionLoading, refreshSession }){
+    
     return <>
     <Header/>
     <Actions user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} /> 
@@ -19,7 +22,7 @@ export default function Page1({ user, sessionLoading, refreshSession }){
                     <div className="buttontag">Loading...</div>
                 </div>
             ) : user ? (
-                <Link to="/dashboard" className="primarybutton">
+                <Link to="/dashboard" className="primarybutton" >
                     <img src="/dashboard.png" alt="Dashboard" className="buttonicon" />
                     <div className="buttontag">Go to Dashboard</div>
                 </Link>
@@ -30,7 +33,10 @@ export default function Page1({ user, sessionLoading, refreshSession }){
                 </Link>
             )}
             <div className="space"></div>
-            <div className="secondarybutton">
+            <div
+       className="secondarybutton"
+       
+     >
                 <img src="/doc.png" alt="Arrow" className="secondbuttonicon" />
                 <div className="secondbuttontag">View Documentation</div>
             </div>

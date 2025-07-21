@@ -228,7 +228,7 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 
-//Page View Calculation
+//Page View and duration of each page Calculation
 app.post('/updatePageViewCount', async (req , res) =>{
   try{
     const {apikey, pagename, startTime, duration} = req.body;
@@ -270,6 +270,54 @@ app.post('/updatePageViewCount', async (req , res) =>{
   }
 });
 
+// Button Click Analytics
+app.post('/updateButtonClickAnalytics', async (req, res) => {
+  try {
+    const { apikey, buttonName, timestamp } = req.body;
+    if (!apikey || !buttonName || !timestamp) {
+      return res.status(400).json({ error: 'apikey, buttonName, and timestamp are required.' });
+    }
+    // Find user by apikey
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    const userDoc = userQuery.docs[0];
+    const userData = userDoc.data();
+    const email = userData.email;
+
+    // Prepare analytics doc ref: analytics/{apikey}/clicks/{buttonName}
+    const clickDocRef = db.collection('analytics').doc(apikey).collection('clicks').doc(buttonName);
+    // Prepare the click event object
+    const clickEvent = {
+      email,
+      timestamp,
+      createdAt: new Date().toISOString(),
+    };
+    // Get the current clicks array and count (if any)
+    const clickDoc = await clickDocRef.get();
+    let clicks = [];
+    let clickCount = 0;
+    if (clickDoc.exists) {
+      const data = clickDoc.data();
+      if (Array.isArray(data.clicks)) {
+        clicks = data.clicks;
+      }
+      if (typeof data.clickCount === 'number') {
+        clickCount = data.clickCount;
+      }
+    }
+    clicks.push(clickEvent);
+    clickCount += 1;
+    // Write the updated clicks array and count back
+    await clickDocRef.set({ clicks, clickCount }, { merge: true });
+    return res.status(200).json({ message: 'Button click recorded.' });
+  } catch (error) {
+    console.error('updateButtonClickAnalytics error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

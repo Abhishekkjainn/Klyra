@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react'
-import './App.css'
-import Header from './components/header'
+import { useEffect, useState } from 'react';
+import './App.css';
 
-import Actions from './components/actions'
 
-import Homepage from './homepage'
+import Homepage from './homepage';
 import { BrowserRouter, Routes, Route,Link } from 'react-router-dom';
-import Signup from './pages/signup'
-import Login from './pages/login'
-import Dashboard from './pages/dashboard'
-import usePageAnalytics from './functions'
+import Signup from './pages/signup';
+import Login from './pages/login';
+import Dashboard from './pages/dashboard';
+import usePageAnalytics from './functions';
 
 function App() {
   const [user, setUser] = useState(null);
