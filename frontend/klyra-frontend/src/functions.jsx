@@ -14,7 +14,7 @@ export default function usePageAnalytics({ apikey, pagename, enabled = true }) {
         startTime: new Date(startTimeRef.current).toISOString(),
         duration,
       };
-      fetch("http://localhost:3000/updatePageViewCount", {
+      fetch("https://klyra-backend.vercel.app/updatePageViewCount", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -45,7 +45,7 @@ export function sendButtonClickAnalytics({ apikey, buttonName }) {
     buttonName,
     timestamp: new Date().toISOString(),
   };
-  fetch("http://localhost:3000/updateButtonClickAnalytics", {
+  fetch("https://klyra-backend.vercel.app/updateButtonClickAnalytics", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
