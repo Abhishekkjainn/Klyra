@@ -7,14 +7,14 @@ export default function Header(){
           <div className="companytag">Klyra</div>
         </Link>
         <div className="links">
-          <div className="link">
+          <Link className="link" to={'/'}>
             <img src="/home.png" alt="" className="linkicon" />
             <div className="linktag">Home</div>
-          </div>
-          <div className="link">
+          </Link>
+          <Link to={"/dashboard"} className="link">
             <img src="/dashboard.png" alt="" className="linkicon" />
             <div className="linktag">Dashboard</div>
-          </div>
+          </Link>
           <div className="link">
             <img src="/documentation.png" alt="" className="linkicon" />
             <div className="linktag">Documentation</div>

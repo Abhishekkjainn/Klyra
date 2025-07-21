@@ -9,10 +9,12 @@ import { BrowserRouter, Routes, Route,Link } from 'react-router-dom';
 import Signup from './pages/signup'
 import Login from './pages/login'
 import Dashboard from './pages/dashboard'
+import usePageAnalytics from './functions'
 
 function App() {
   const [user, setUser] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+
 
   const refreshSession = () => {
     setSessionLoading(true);

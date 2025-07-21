@@ -11,6 +11,8 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Klyra API!' );
 });
 
+// User Authentication
+
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -53,10 +55,13 @@ app.post('/signup', async (req, res) => {
 
     // Auto-login: create session
     const sessionId = uuidv4();
+    const createdAt = new Date();
+    const endAt = new Date(createdAt.getTime() + 48 * 60 * 60 * 1000); // 48 hours later
     await sessionsRef.doc(sessionId).set({
       sessionId,
       email,
-      createdAt: new Date().toISOString(),
+      createdAt: createdAt.toISOString(),
+      endAt: endAt.toISOString(),
     });
 
     return res.status(201).json({
@@ -120,10 +125,13 @@ app.post('/login', async (req, res) => {
 
     // Create session
     const sessionId = uuidv4();
+    const createdAt = new Date();
+    const endAt = new Date(createdAt.getTime() + 48 * 60 * 60 * 1000); // 48 hours later
     await sessionsRef.doc(sessionId).set({
       sessionId,
       email,
-      createdAt: new Date().toISOString(),
+      createdAt: createdAt.toISOString(),
+      endAt: endAt.toISOString(),
     });
 
     return res.status(200).json({
@@ -172,7 +180,13 @@ app.post('/check-session', async (req, res) => {
     if (!sessionDoc.exists) {
       return res.status(401).json({ error: 'Session is invalid or expired.' });
     }
-    const { email } = sessionDoc.data();
+    const { email, endAt } = sessionDoc.data();
+    // Check session expiry
+    if (!endAt || new Date(endAt) < new Date()) {
+      // Session expired, delete it
+      await sessionRef.delete();
+      return res.status(401).json({ error: 'Session is invalid or expired.' });
+    }
     const userRef = db.collection('users').doc(email);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -213,6 +227,49 @@ app.post('/forgot-password', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
+//Page View Calculation
+app.post('/updatePageViewCount', async (req , res) =>{
+  try{
+    const {apikey, pagename, startTime, duration} = req.body;
+    if (!apikey || !pagename || !startTime || !duration) {
+      return res.status(400).json({ error: 'apikey, pagename, startTime, and duration are required.' });
+    }
+    // Find user by apikey
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    const userDoc = userQuery.docs[0];
+    const userData = userDoc.data();
+    const email = userData.email;
+
+    // Prepare analytics doc ref: analytics/{apikey}/pages/{pagename}
+    const pageDocRef = db.collection('analytics').doc(apikey).collection('pages').doc(pagename);
+    // Prepare the visit object
+    const visit = {
+      email,
+      duration,
+      timestamp: startTime,
+      createdAt: new Date().toISOString(),
+    };
+    // Get the current visits array (if any)
+    const pageDoc = await pageDocRef.get();
+    let visits = [];
+    if (pageDoc.exists && Array.isArray(pageDoc.data().visits)) {
+      visits = pageDoc.data().visits;
+    }
+    visits.push(visit);
+    // Write the updated visits array back
+    await pageDocRef.set({ visits }, { merge: true });
+    return res.status(200).json({ message: 'Page view recorded.' });
+  } catch (error) {
+    console.error('updatePageViewCount error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
