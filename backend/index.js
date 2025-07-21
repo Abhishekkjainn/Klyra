@@ -319,6 +319,46 @@ app.post('/updateButtonClickAnalytics', async (req, res) => {
   }
 });
 
+
+//create user journey analytics
+app.post('/userJourneyAnalytics', async (req, res) => {
+  try {
+    const { apikey, routes, startTime, duration } = req.body;
+    if (!apikey || !Array.isArray(routes) || !startTime || typeof duration !== 'number') {
+      return res.status(400).json({ error: 'apikey, routes (array), startTime, and duration (number) are required.' });
+    }
+    // Find user by apikey
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    // Find the next available index for this user's journeys
+    const journeyColRef = db.collection('analytics').doc(apikey).collection('userjourney');
+    const journeysSnap = await journeyColRef.get();
+    let maxIndex = -1;
+    journeysSnap.forEach(doc => {
+      const idx = parseInt(doc.id, 10);
+      if (!isNaN(idx) && idx > maxIndex) maxIndex = idx;
+    });
+    const nextIndex = maxIndex + 1;
+    // Prepare the journey object
+    const journey = {
+      routes,
+      startTime,
+      duration,
+      createdAt: new Date().toISOString(),
+    };
+    // Store the journey under the next index
+    await journeyColRef.doc(String(nextIndex)).set(journey);
+    return res.status(201).json({ message: 'User journey recorded.', index: nextIndex });
+  } catch (error) {
+    console.error('userJourneyAnalytics error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
