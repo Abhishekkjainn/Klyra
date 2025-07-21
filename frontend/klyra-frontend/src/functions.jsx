@@ -124,12 +124,19 @@ export function useUserJourneyAnalytics({ apikey, enabled = true }) {
         duration,
       };
       console.log('[JourneyAnalytics] Sending journey payload:', payload);
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      const result = navigator.sendBeacon(
-        "https://klyra-backend.vercel.app/userJourneyAnalytics",
-        blob
-      );
-      console.log('[JourneyAnalytics] sendBeacon result:', result);
+      fetch("https://klyra-backend.vercel.app/userJourneyAnalytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log('[JourneyAnalytics] fetch response:', data);
+        })
+        .catch(err => {
+          console.log('[JourneyAnalytics] fetch error:', err);
+        });
     };
     window.addEventListener("beforeunload", sendJourney);
 
@@ -141,6 +148,72 @@ export function useUserJourneyAnalytics({ apikey, enabled = true }) {
       console.log('[JourneyAnalytics] Cleanup complete');
     };
   }, [apikey, enabled]);
+}
+
+// Device, Browser, OS & Location Analytics
+export function sendDeviceInfoAnalytics({ apikey, getLocation = false }) {
+  if (!apikey) {
+    console.log('[DeviceInfoAnalytics] Missing apikey, not sending');
+    return;
+  }
+  // Prevent duplicate sends in the same session
+  if (sessionStorage.getItem('device_info_sent')) {
+    console.log('[DeviceInfoAnalytics] Already sent this session');
+    return;
+  }
+
+  // Collect device info
+  const deviceInfo = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    deviceMemory: navigator.deviceMemory || null,
+    hardwareConcurrency: navigator.hardwareConcurrency || null,
+    touchSupport: 'ontouchstart' in window,
+  };
+
+  // Helper to send the payload
+  const sendPayload = (location) => {
+    const payload = {
+      apikey,
+      deviceInfo,
+      location: location || null,
+    };
+    fetch('http://localhost:3000/deviceInfoAnalytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log('[DeviceInfoAnalytics] Sent:', data);
+        sessionStorage.setItem('device_info_sent', '1');
+      })
+      .catch(err => {
+        console.log('[DeviceInfoAnalytics] Error:', err);
+      });
+  };
+
+  if (getLocation && 'geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        sendPayload({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.log('[DeviceInfoAnalytics] Geolocation error:', error);
+        sendPayload(null);
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    sendPayload(null);
+  }
 }
 
 

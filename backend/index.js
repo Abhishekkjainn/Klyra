@@ -319,7 +319,6 @@ app.post('/updateButtonClickAnalytics', async (req, res) => {
   }
 });
 
-
 //create user journey analytics
 app.post('/userJourneyAnalytics', async (req, res) => {
   try {
@@ -354,6 +353,43 @@ app.post('/userJourneyAnalytics', async (req, res) => {
     return res.status(201).json({ message: 'User journey recorded.', index: nextIndex });
   } catch (error) {
     console.error('userJourneyAnalytics error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Device, Browser, OS & Location Analytics
+app.post('/deviceInfoAnalytics', async (req, res) => {
+  try {
+    const { apikey, deviceInfo, location } = req.body;
+    if (!apikey || !deviceInfo) {
+      return res.status(400).json({ error: 'apikey and deviceInfo are required.' });
+    }
+    // Validate API key
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    // Find the next available index for this user's device info
+    const deviceInfoColRef = db.collection('analytics').doc(apikey).collection('deviceinfo');
+    const deviceInfoSnap = await deviceInfoColRef.get();
+    let maxIndex = -1;
+    deviceInfoSnap.forEach(doc => {
+      const idx = parseInt(doc.id, 10);
+      if (!isNaN(idx) && idx > maxIndex) maxIndex = idx;
+    });
+    const nextIndex = maxIndex + 1;
+    // Prepare the device info object
+    const timestamp = new Date().toISOString();
+    const docData = {
+      ...deviceInfo,
+      location: location || null,
+      createdAt: timestamp,
+    };
+    await deviceInfoColRef.doc(String(nextIndex)).set(docData);
+    return res.status(201).json({ message: 'Device info recorded.', index: nextIndex });
+  } catch (error) {
+    console.error('deviceInfoAnalytics error:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 });
