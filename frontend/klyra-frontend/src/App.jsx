@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import { useUserJourneyAnalytics } from './functions';
 
 
 import Homepage from './homepage';
@@ -8,6 +9,7 @@ import Signup from './pages/signup';
 import Login from './pages/login';
 import Dashboard from './pages/dashboard';
 import usePageAnalytics from './functions';
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -45,6 +47,9 @@ function App() {
   useEffect(() => {
     refreshSession();
   }, []);
+
+  useUserJourneyAnalytics({ apikey: user?.apikey, enabled: !!user });
+  
 
   return (
     <BrowserRouter>

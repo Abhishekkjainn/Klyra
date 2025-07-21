@@ -2,6 +2,7 @@ import {Link} from 'react-router-dom';
 import Header from '../components/header';
 import Actions from '../components/actions';
 import { useEffect, useState } from 'react';
+import { sendButtonClickAnalytics } from '../functions.jsx'
 
 
 export default function Page1({ user, sessionLoading, refreshSession }){
@@ -34,7 +35,8 @@ export default function Page1({ user, sessionLoading, refreshSession }){
             )}
             <div className="space"></div>
             <div
-       className="secondarybutton"
+       className="secondarybutton" 
+    //    onClick={()=> sendButtonClickAnalytics({apikey : user?.apikey, buttonName:"View Documentation"})}
        
      >
                 <img src="/doc.png" alt="Arrow" className="secondbuttonicon" />
