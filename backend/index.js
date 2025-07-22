@@ -394,6 +394,84 @@ app.post('/deviceInfoAnalytics', async (req, res) => {
   }
 });
 
+// Active User Increment
+app.post('/activeUserIncrement', async (req, res) => {
+  try {
+    const { apikey, tabId } = req.body;
+    if (!apikey || !tabId) {
+      return res.status(400).json({ error: 'apikey and tabId are required.' });
+    }
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    const realtimeDocRef = db.collection('analytics').doc(apikey).collection('realtime').doc('activeUsers');
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(realtimeDocRef);
+      let sessions = {};
+      if (doc.exists) {
+        const data = doc.data();
+        if (typeof data.sessions === 'object' && data.sessions !== null) {
+          sessions = data.sessions;
+        } else {
+          // Corrupted sessions, reset
+          sessions = {};
+        }
+      }
+      if (!sessions[tabId]) {
+        sessions[tabId] = true;
+      }
+      // Always recalculate count
+      const count = Object.keys(sessions).length;
+      transaction.set(realtimeDocRef, { sessions, count }, { merge: true });
+    });
+    return res.status(200).json({ message: 'Active user incremented.' });
+  } catch (error) {
+    console.error('activeUserIncrement error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Active User Decrement
+app.post('/activeUserDecrement', async (req, res) => {
+  try {
+    const { apikey, tabId } = req.body;
+    if (!apikey || !tabId) {
+      return res.status(400).json({ error: 'apikey and tabId are required.' });
+    }
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    const realtimeDocRef = db.collection('analytics').doc(apikey).collection('realtime').doc('activeUsers');
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(realtimeDocRef);
+      let sessions = {};
+      if (doc.exists) {
+        const data = doc.data();
+        if (typeof data.sessions === 'object' && data.sessions !== null) {
+          sessions = data.sessions;
+        } else {
+          // Corrupted sessions, reset
+          sessions = {};
+        }
+      }
+      if (sessions[tabId]) {
+        delete sessions[tabId];
+      }
+      // Always recalculate count
+      const count = Object.keys(sessions).length;
+      transaction.set(realtimeDocRef, { sessions, count }, { merge: true });
+    });
+    return res.status(200).json({ message: 'Active user decremented.' });
+  } catch (error) {
+    console.error('activeUserDecrement error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
