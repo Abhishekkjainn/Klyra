@@ -216,8 +216,12 @@ export function sendDeviceInfoAnalytics({ apikey, getLocation = false }) {
   }
 }
 
-// Active User Tracker Hook
+// Active User Tracker Hook (Robust Version)
 
+/**
+ * Returns a unique tabId for this browser tab, stored in sessionStorage.
+ * If not present, generates a new one.
+ */
 function getTabId() {
   let tabId = sessionStorage.getItem('klyra_tab_id');
   if (!tabId) {
@@ -227,38 +231,67 @@ function getTabId() {
   return tabId;
 }
 
+/**
+ * Tracks active user sessions per tab. Increments on mount, decrements on tab close.
+ * Uses sendBeacon for bulletproof unload handling. Ensures only one increment/decrement per tab.
+ */
 export function useActiveUserTracker({ apikey, enabled = true }) {
   useEffect(() => {
     if (!enabled || !apikey) return;
-    let retryTimeout = null;
-    let incremented = false;
+
     const tabId = getTabId();
     const incrementFlagKey = `klyra_incremented_${tabId}`;
+    let heartbeatInterval = null;
+    let stopped = false;
 
-    const increment = () => {
-      if (sessionStorage.getItem(incrementFlagKey)) {
-        incremented = true;
-        return;
-      }
-      fetch('https://klyra-backend.vercel.app/activeUserIncrement', {
+    // Increment only once per tab
+    if (!sessionStorage.getItem(incrementFlagKey)) {
+      fetch('http://localhost:3000/activeUserIncrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
       })
         .then(res => {
-          if (!res.ok) throw new Error('Failed to increment active user');
-          sessionStorage.setItem(incrementFlagKey, '1');
-          incremented = true;
+          if (res.ok) {
+            sessionStorage.setItem(incrementFlagKey, '1');
+            console.log('[ActiveUserTracker] Incremented');
+          } else {
+            throw new Error('Increment failed');
+          }
         })
         .catch(err => {
           console.error('[ActiveUserTracker] Increment error:', err);
-          retryTimeout = setTimeout(increment, 2000);
+        });
+    }
+
+    // Heartbeat function
+    const sendHeartbeat = () => {
+      if (stopped) return;
+      fetch('http://localhost:3000/activeUserHeartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apikey, tabId, timestamp: new Date().toISOString() }),
+        keepalive: true,
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Heartbeat failed');
+          console.log('[ActiveUserTracker] Heartbeat sent');
+        })
+        .catch(err => {
+          console.error('[ActiveUserTracker] Heartbeat error:', err);
         });
     };
 
+    // Start heartbeat interval (every 60s)
+    heartbeatInterval = setInterval(sendHeartbeat, 60000);
+    // Send initial heartbeat immediately
+    sendHeartbeat();
+
+    // Decrement on unmount or beforeunload (best effort)
     const decrement = () => {
-      if (!incremented && !sessionStorage.getItem(incrementFlagKey)) return;
-      fetch('https://klyra-backend.vercel.app/activeUserDecrement', {
+      stopped = true;
+      if (!sessionStorage.getItem(incrementFlagKey)) return;
+      fetch('http://localhost:3000/activeUserDecrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
@@ -267,17 +300,17 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
         .then(() => {
           sessionStorage.removeItem('klyra_tab_id');
           sessionStorage.removeItem(incrementFlagKey);
+          console.log('[ActiveUserTracker] Decrement sent');
         })
         .catch(err => {
           console.error('[ActiveUserTracker] Decrement error:', err);
         });
     };
 
-    increment();
     window.addEventListener('beforeunload', decrement);
 
     return () => {
-      if (retryTimeout) clearTimeout(retryTimeout);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
       decrement();
       window.removeEventListener('beforeunload', decrement);
     };

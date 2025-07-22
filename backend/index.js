@@ -394,16 +394,66 @@ app.post('/deviceInfoAnalytics', async (req, res) => {
   }
 });
 
-// Active User Increment
+// Active User Heartbeat
+app.post('/activeUserHeartbeat', async (req, res) => {
+  try {
+    const { apikey, tabId, timestamp } = req.body;
+    console.log(`[Heartbeat] Received: apikey=${apikey}, tabId=${tabId}, timestamp=${timestamp}`);
+    if (!apikey || !tabId || !timestamp) {
+      console.log('[Heartbeat] Missing required fields');
+      return res.status(400).json({ error: 'apikey, tabId, and timestamp are required.' });
+    }
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      console.log('[Heartbeat] Invalid API key');
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    const realtimeDocRef = db.collection('analytics').doc(apikey).collection('realtime').doc('activeUsers');
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(realtimeDocRef);
+      let sessions = {};
+      if (doc.exists) {
+        const data = doc.data();
+        if (typeof data.sessions === 'object' && data.sessions !== null) {
+          sessions = data.sessions;
+        }
+      }
+      // Set/update lastSeen for this tabId
+      sessions[tabId] = { lastSeen: timestamp };
+      // Remove sessions older than 70 seconds
+      const now = Date.now();
+      let removed = [];
+      for (const [id, info] of Object.entries(sessions)) {
+        if (!info.lastSeen || (now - new Date(info.lastSeen).getTime()) > 70000) {
+          removed.push(id);
+          delete sessions[id];
+        }
+      }
+      const count = Object.keys(sessions).length;
+      transaction.set(realtimeDocRef, { sessions, count }, { merge: true });
+      console.log(`[Heartbeat] Updated sessions. Active: ${count}, Removed: [${removed.join(', ')}]`);
+    });
+    return res.status(200).json({ message: 'Heartbeat recorded.' });
+  } catch (error) {
+    console.error('activeUserHeartbeat error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Update increment to set lastSeen
 app.post('/activeUserIncrement', async (req, res) => {
   try {
     const { apikey, tabId } = req.body;
+    console.log(`[Increment] Received: apikey=${apikey}, tabId=${tabId}`);
     if (!apikey || !tabId) {
+      console.log('[Increment] Missing required fields');
       return res.status(400).json({ error: 'apikey and tabId are required.' });
     }
     const usersRef = db.collection('users');
     const userQuery = await usersRef.where('apikey', '==', apikey).get();
     if (userQuery.empty) {
+      console.log('[Increment] Invalid API key');
       return res.status(401).json({ error: 'Invalid API key.' });
     }
     const realtimeDocRef = db.collection('analytics').doc(apikey).collection('realtime').doc('activeUsers');
@@ -415,16 +465,23 @@ app.post('/activeUserIncrement', async (req, res) => {
         if (typeof data.sessions === 'object' && data.sessions !== null) {
           sessions = data.sessions;
         } else {
-          // Corrupted sessions, reset
           sessions = {};
         }
       }
-      if (!sessions[tabId]) {
-        sessions[tabId] = true;
+      // Set lastSeen for this tabId
+      sessions[tabId] = { lastSeen: new Date().toISOString() };
+      // Remove sessions older than 70 seconds
+      const now = Date.now();
+      let removed = [];
+      for (const [id, info] of Object.entries(sessions)) {
+        if (!info.lastSeen || (now - new Date(info.lastSeen).getTime()) > 70000) {
+          removed.push(id);
+          delete sessions[id];
+        }
       }
-      // Always recalculate count
       const count = Object.keys(sessions).length;
       transaction.set(realtimeDocRef, { sessions, count }, { merge: true });
+      console.log(`[Increment] Updated sessions. Active: ${count}, Removed: [${removed.join(', ')}]`);
     });
     return res.status(200).json({ message: 'Active user incremented.' });
   } catch (error) {
@@ -433,16 +490,19 @@ app.post('/activeUserIncrement', async (req, res) => {
   }
 });
 
-// Active User Decrement
+// Update decrement to delete the session
 app.post('/activeUserDecrement', async (req, res) => {
   try {
     const { apikey, tabId } = req.body;
+    console.log(`[Decrement] Received: apikey=${apikey}, tabId=${tabId}`);
     if (!apikey || !tabId) {
+      console.log('[Decrement] Missing required fields');
       return res.status(400).json({ error: 'apikey and tabId are required.' });
     }
     const usersRef = db.collection('users');
     const userQuery = await usersRef.where('apikey', '==', apikey).get();
     if (userQuery.empty) {
+      console.log('[Decrement] Invalid API key');
       return res.status(401).json({ error: 'Invalid API key.' });
     }
     const realtimeDocRef = db.collection('analytics').doc(apikey).collection('realtime').doc('activeUsers');
@@ -454,16 +514,25 @@ app.post('/activeUserDecrement', async (req, res) => {
         if (typeof data.sessions === 'object' && data.sessions !== null) {
           sessions = data.sessions;
         } else {
-          // Corrupted sessions, reset
           sessions = {};
         }
       }
+      let removed = [];
       if (sessions[tabId]) {
         delete sessions[tabId];
+        removed.push(tabId);
       }
-      // Always recalculate count
+      // Remove sessions older than 70 seconds
+      const now = Date.now();
+      for (const [id, info] of Object.entries(sessions)) {
+        if (!info.lastSeen || (now - new Date(info.lastSeen).getTime()) > 70000) {
+          removed.push(id);
+          delete sessions[id];
+        }
+      }
       const count = Object.keys(sessions).length;
       transaction.set(realtimeDocRef, { sessions, count }, { merge: true });
+      console.log(`[Decrement] Updated sessions. Active: ${count}, Removed: [${removed.join(', ')}]`);
     });
     return res.status(200).json({ message: 'Active user decremented.' });
   } catch (error) {
