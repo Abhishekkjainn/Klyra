@@ -246,7 +246,7 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
 
     // Increment only once per tab
     if (!sessionStorage.getItem(incrementFlagKey)) {
-      fetch('http://localhost:3000/activeUserIncrement', {
+      fetch('https://klyra-backend.vercel.app/activeUserIncrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
@@ -267,7 +267,7 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
     // Heartbeat function
     const sendHeartbeat = () => {
       if (stopped) return;
-      fetch('http://localhost:3000/activeUserHeartbeat', {
+      fetch('https://klyra-backend.vercel.app/activeUserHeartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId, timestamp: new Date().toISOString() }),
@@ -291,7 +291,7 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
     const decrement = () => {
       stopped = true;
       if (!sessionStorage.getItem(incrementFlagKey)) return;
-      fetch('http://localhost:3000/activeUserDecrement', {
+      fetch('https://klyra-backend.vercel.app/activeUserDecrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
