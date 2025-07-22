@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route,Link } from 'react-router-dom';
 import Signup from './pages/signup';
 import Login from './pages/login';
 import Dashboard from './pages/dashboard';
-import { useUserJourneyAnalytics, sendDeviceInfoAnalytics } from './functions';
+import { useUserJourneyAnalytics, sendDeviceInfoAnalytics, useActiveUserTracker } from './functions';
 import usePageAnalytics from './functions';
 
 
@@ -46,12 +46,17 @@ function App() {
     refreshSession();
   }, []);
 
-  useUserJourneyAnalytics({ apikey: user?.apikey, enabled: !!user });
-  useEffect(() => {
-    if (user?.apikey) {
-      sendDeviceInfoAnalytics({ apikey: user.apikey, getLocation: true });
-    }
-  }, [user?.apikey]);
+  // useUserJourneyAnalytics({ apikey: user?.apikey, enabled: !!user });
+  // useEffect(() => {
+  //   if (user?.apikey) {
+  //     sendDeviceInfoAnalytics({ apikey: user.apikey, getLocation: true });
+  //   }
+  // }, [user?.apikey]);
+
+  useActiveUserTracker({
+    apikey: user?.apikey,
+    enabled: !!user
+  });
 
   
 

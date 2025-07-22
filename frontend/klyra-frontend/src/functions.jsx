@@ -216,5 +216,73 @@ export function sendDeviceInfoAnalytics({ apikey, getLocation = false }) {
   }
 }
 
+// Active User Tracker Hook
+
+function getTabId() {
+  let tabId = sessionStorage.getItem('klyra_tab_id');
+  if (!tabId) {
+    tabId = (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2) + Date.now());
+    sessionStorage.setItem('klyra_tab_id', tabId);
+  }
+  return tabId;
+}
+
+export function useActiveUserTracker({ apikey, enabled = true }) {
+  useEffect(() => {
+    if (!enabled || !apikey) return;
+    let retryTimeout = null;
+    let incremented = false;
+    const tabId = getTabId();
+    const incrementFlagKey = `klyra_incremented_${tabId}`;
+
+    const increment = () => {
+      if (sessionStorage.getItem(incrementFlagKey)) {
+        incremented = true;
+        return;
+      }
+      fetch('http://localhost:3000/activeUserIncrement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apikey, tabId }),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to increment active user');
+          sessionStorage.setItem(incrementFlagKey, '1');
+          incremented = true;
+        })
+        .catch(err => {
+          console.error('[ActiveUserTracker] Increment error:', err);
+          retryTimeout = setTimeout(increment, 2000);
+        });
+    };
+
+    const decrement = () => {
+      if (!incremented && !sessionStorage.getItem(incrementFlagKey)) return;
+      fetch('http://localhost:3000/activeUserDecrement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apikey, tabId }),
+        keepalive: true,
+      })
+        .then(() => {
+          sessionStorage.removeItem('klyra_tab_id');
+          sessionStorage.removeItem(incrementFlagKey);
+        })
+        .catch(err => {
+          console.error('[ActiveUserTracker] Decrement error:', err);
+        });
+    };
+
+    increment();
+    window.addEventListener('beforeunload', decrement);
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+      decrement();
+      window.removeEventListener('beforeunload', decrement);
+    };
+  }, [apikey, enabled]);
+}
+
 
 
