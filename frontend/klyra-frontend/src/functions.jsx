@@ -181,7 +181,7 @@ export function sendDeviceInfoAnalytics({ apikey, getLocation = false }) {
       deviceInfo,
       location: location || null,
     };
-    fetch('http://localhost:3000/deviceInfoAnalytics', {
+    fetch('https://klyra-backend.vercel.app/deviceInfoAnalytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -240,7 +240,7 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
         incremented = true;
         return;
       }
-      fetch('http://localhost:3000/activeUserIncrement', {
+      fetch('https://klyra-backend.vercel.app/activeUserIncrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
@@ -258,7 +258,7 @@ export function useActiveUserTracker({ apikey, enabled = true }) {
 
     const decrement = () => {
       if (!incremented && !sessionStorage.getItem(incrementFlagKey)) return;
-      fetch('http://localhost:3000/activeUserDecrement', {
+      fetch('https://klyra-backend.vercel.app/activeUserDecrement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apikey, tabId }),
