@@ -53,10 +53,10 @@ function App() {
   //   }
   // }, [user?.apikey]);
 
-  useActiveUserTracker({
-    apikey: user?.apikey,
-    enabled: !!user
-  });
+  // useActiveUserTracker({
+  //   apikey: user?.apikey,
+  //   enabled: !!user
+  // });
 
   
 

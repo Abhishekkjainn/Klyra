@@ -541,6 +541,542 @@ app.post('/activeUserDecrement', async (req, res) => {
   }
 });
 
+// GET all analytics for a given API key
+app.get('/analytics/:apikey', async (req, res) => {
+  try {
+    const { apikey } = req.params;
+    if (!apikey) {
+      return res.status(400).json({ error: 'API key is required.' });
+    }
+    // Validate API key
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+    // Reference to analytics/{apikey}
+    const analyticsRef = db.collection('analytics').doc(apikey);
+    // List all subcollections
+    const subcollections = await analyticsRef.listCollections();
+    const analyticsData = {};
+    for (const subcol of subcollections) {
+      const subcolSnap = await subcol.get();
+      analyticsData[subcol.id] = {};
+      subcolSnap.forEach(doc => {
+        analyticsData[subcol.id][doc.id] = doc.data();
+      });
+    }
+    return res.status(200).json({ apikey, analytics: analyticsData });
+  } catch (error) {
+    console.error('Fetch analytics error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// GET comprehensive analytics analysis for a given API key
+app.get('/analytics/:apikey/analysis', async (req, res) => {
+  try {
+    const { apikey } = req.params;
+    if (!apikey) {
+      return res.status(400).json({ error: 'API key is required.' });
+    }
+
+    // Validate API key
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('apikey', '==', apikey).get();
+    if (userQuery.empty) {
+      return res.status(401).json({ error: 'Invalid API key.' });
+    }
+
+    // Get all analytics data
+    const analyticsRef = db.collection('analytics').doc(apikey);
+    const subcollections = await analyticsRef.listCollections();
+    const analyticsData = {};
+    
+    for (const subcol of subcollections) {
+      const subcolSnap = await subcol.get();
+      analyticsData[subcol.id] = {};
+      subcolSnap.forEach(doc => {
+        analyticsData[subcol.id][doc.id] = doc.data();
+      });
+    }
+
+    // Comprehensive Analysis
+    const analysis = {
+      overview: analyzeOverview(analyticsData),
+      pageAnalytics: analyzePages(analyticsData.pages || {}),
+      clickAnalytics: analyzeClicks(analyticsData.clicks || {}),
+      userJourney: analyzeUserJourney(analyticsData.userjourney || {}),
+      deviceAnalytics: analyzeDevices(analyticsData.deviceinfo || {}),
+      realtimeAnalytics: analyzeRealtime(analyticsData.realtime || {}),
+      userBehavior: analyzeUserBehavior(analyticsData),
+      performance: analyzePerformance(analyticsData),
+      timePatterns: analyzeTimePatterns(analyticsData),
+      geographicData: analyzeGeographicData(analyticsData),
+      sessionPatterns: analyzeSessionPatterns(analyticsData),
+      conversionFunnel: analyzeConversionFunnel(analyticsData),
+      insights: generateInsights(analyticsData)
+    };
+
+    return res.status(200).json({
+      apikey,
+      analysis,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Analytics analysis error:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// Analysis Helper Functions
+function analyzeOverview(data) {
+  const totalPages = Object.keys(data.pages || {}).length;
+  const totalClicks = Object.keys(data.clicks || {}).length;
+  const totalJourneys = Object.keys(data.userjourney || {}).length;
+  const totalDevices = Object.keys(data.deviceinfo || {}).length;
+  
+  let totalPageVisits = 0;
+  let totalClickEvents = 0;
+  let totalJourneyDuration = 0;
+  
+  // Calculate totals
+  Object.values(data.pages || {}).forEach(page => {
+    if (page.visits) totalPageVisits += page.visits.length;
+  });
+  
+  Object.values(data.clicks || {}).forEach(click => {
+    if (click.clickCount) totalClickEvents += click.clickCount;
+  });
+  
+  Object.values(data.userjourney || {}).forEach(journey => {
+    if (journey.duration) totalJourneyDuration += journey.duration;
+  });
+
+  return {
+    totalPages,
+    totalClicks,
+    totalJourneys,
+    totalDevices,
+    totalPageVisits,
+    totalClickEvents,
+    totalJourneyDuration,
+    averageJourneyDuration: totalJourneys > 0 ? Math.round(totalJourneyDuration / totalJourneys) : 0,
+    averagePageVisits: totalPages > 0 ? Math.round(totalPageVisits / totalPages) : 0
+  };
+}
+
+function analyzePages(pagesData) {
+  const pages = Object.keys(pagesData);
+  const pageAnalytics = {};
+  
+  pages.forEach(pageName => {
+    const page = pagesData[pageName];
+    const visits = page.visits || [];
+    
+    if (visits.length > 0) {
+      const totalDuration = visits.reduce((sum, visit) => sum + (visit.duration || 0), 0);
+      const averageDuration = Math.round(totalDuration / visits.length);
+      
+      // Group by date
+      const visitsByDate = {};
+      visits.forEach(visit => {
+        const date = new Date(visit.timestamp).toDateString();
+        if (!visitsByDate[date]) visitsByDate[date] = [];
+        visitsByDate[date].push(visit);
+      });
+      
+      pageAnalytics[pageName] = {
+        totalVisits: visits.length,
+        totalDuration,
+        averageDuration,
+        visitsByDate,
+        lastVisit: visits[visits.length - 1]?.timestamp,
+        firstVisit: visits[0]?.timestamp
+      };
+    }
+  });
+  
+  return pageAnalytics;
+}
+
+function analyzeClicks(clicksData) {
+  const clicks = Object.keys(clicksData);
+  const clickAnalytics = {};
+  
+  clicks.forEach(clickName => {
+    const click = clicksData[clickName];
+    const clickEvents = click.clicks || [];
+    
+    if (clickEvents.length > 0) {
+      // Group by date
+      const clicksByDate = {};
+      clickEvents.forEach(clickEvent => {
+        const date = new Date(clickEvent.timestamp).toDateString();
+        if (!clicksByDate[date]) clicksByDate[date] = [];
+        clicksByDate[date].push(clickEvent);
+      });
+      
+      clickAnalytics[clickName] = {
+        totalClicks: click.clickCount || clickEvents.length,
+        clicksByDate,
+        lastClick: clickEvents[clickEvents.length - 1]?.timestamp,
+        firstClick: clickEvents[0]?.timestamp,
+        clickRate: clickEvents.length > 0 ? Math.round((clickEvents.length / clickEvents.length) * 100) : 0
+      };
+    }
+  });
+  
+  return clickAnalytics;
+}
+
+function analyzeUserJourney(journeyData) {
+  const journeys = Object.values(journeyData);
+  
+  if (journeys.length === 0) {
+    return {
+      totalJourneys: 0,
+      averageDuration: 0,
+      commonRoutes: [],
+      journeyPatterns: []
+    };
+  }
+  
+  const totalDuration = journeys.reduce((sum, journey) => sum + (journey.duration || 0), 0);
+  const averageDuration = Math.round(totalDuration / journeys.length);
+  
+  // Analyze routes
+  const routeFrequency = {};
+  journeys.forEach(journey => {
+    const routes = journey.routes || [];
+    routes.forEach(route => {
+      routeFrequency[route] = (routeFrequency[route] || 0) + 1;
+    });
+  });
+  
+  const commonRoutes = Object.entries(routeFrequency)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5)
+    .map(([route, count]) => ({ route, count }));
+  
+  // Journey patterns
+  const journeyPatterns = journeys.map(journey => ({
+    routes: journey.routes || [],
+    duration: journey.duration || 0,
+    startTime: journey.startTime,
+    routeCount: (journey.routes || []).length
+  }));
+  
+  return {
+    totalJourneys: journeys.length,
+    averageDuration,
+    commonRoutes,
+    journeyPatterns,
+    longestJourney: Math.max(...journeys.map(j => j.duration || 0)),
+    shortestJourney: Math.min(...journeys.map(j => j.duration || 0))
+  };
+}
+
+function analyzeDevices(deviceData) {
+  const devices = Object.values(deviceData);
+  
+  if (devices.length === 0) {
+    return {
+      totalDevices: 0,
+      platforms: {},
+      browsers: {},
+      screenSizes: {},
+      locations: []
+    };
+  }
+  
+  const platforms = {};
+  const browsers = {};
+  const screenSizes = {};
+  const locations = [];
+  
+  devices.forEach(device => {
+    // Platform analysis
+    const platform = device.platform || 'Unknown';
+    platforms[platform] = (platforms[platform] || 0) + 1;
+    
+    // Browser analysis
+    const userAgent = device.userAgent || '';
+    let browser = 'Unknown';
+    if (userAgent.includes('Chrome')) browser = 'Chrome';
+    else if (userAgent.includes('Firefox')) browser = 'Firefox';
+    else if (userAgent.includes('Safari')) browser = 'Safari';
+    else if (userAgent.includes('Edge')) browser = 'Edge';
+    
+    browsers[browser] = (browsers[browser] || 0) + 1;
+    
+    // Screen size analysis
+    const screenSize = `${device.screenWidth || 0}x${device.screenHeight || 0}`;
+    screenSizes[screenSize] = (screenSizes[screenSize] || 0) + 1;
+    
+    // Location analysis
+    if (device.location && device.location.latitude && device.location.longitude) {
+      locations.push({
+        latitude: device.location.latitude,
+        longitude: device.location.longitude,
+        timestamp: device.createdAt
+      });
+    }
+  });
+  
+  return {
+    totalDevices: devices.length,
+    platforms,
+    browsers,
+    screenSizes,
+    locations,
+    averageMemory: Math.round(devices.reduce((sum, d) => sum + (d.deviceMemory || 0), 0) / devices.length),
+    averageCores: Math.round(devices.reduce((sum, d) => sum + (d.hardwareConcurrency || 0), 0) / devices.length)
+  };
+}
+
+function analyzeRealtime(realtimeData) {
+  const activeUsers = realtimeData.activeUsers || {};
+  const sessions = activeUsers.sessions || {};
+  const currentCount = activeUsers.count || 0;
+  
+  return {
+    currentActiveUsers: currentCount,
+    totalSessions: Object.keys(sessions).length,
+    sessionDetails: sessions
+  };
+}
+
+function analyzeUserBehavior(data) {
+  const pages = data.pages || {};
+  const clicks = data.clicks || {};
+  const journeys = data.userjourney || {};
+  
+  // Engagement analysis
+  const totalEngagement = Object.values(pages).reduce((sum, page) => {
+    return sum + (page.visits ? page.visits.reduce((pageSum, visit) => pageSum + (visit.duration || 0), 0) : 0);
+  }, 0);
+  
+  // Click engagement
+  const totalClicks = Object.values(clicks).reduce((sum, click) => {
+    return sum + (click.clickCount || 0);
+  }, 0);
+  
+  // Session analysis
+  const sessionDurations = Object.values(journeys).map(journey => journey.duration || 0);
+  const averageSessionDuration = sessionDurations.length > 0 ? 
+    Math.round(sessionDurations.reduce((sum, duration) => sum + duration, 0) / sessionDurations.length) : 0;
+  
+  return {
+    totalEngagement,
+    totalClicks,
+    averageSessionDuration,
+    engagementRate: totalEngagement > 0 ? Math.round((totalClicks / totalEngagement) * 100) : 0,
+    sessionCount: Object.keys(journeys).length
+  };
+}
+
+function analyzePerformance(data) {
+  const pages = data.pages || {};
+  const journeys = data.userjourney || {};
+  
+  // Performance metrics
+  const pageLoadTimes = [];
+  const sessionDurations = Object.values(journeys).map(j => j.duration || 0);
+  
+  Object.values(pages).forEach(page => {
+    if (page.visits) {
+      page.visits.forEach(visit => {
+        if (visit.duration) pageLoadTimes.push(visit.duration);
+      });
+    }
+  });
+  
+  const averagePageLoadTime = pageLoadTimes.length > 0 ? 
+    Math.round(pageLoadTimes.reduce((sum, time) => sum + time, 0) / pageLoadTimes.length) : 0;
+  
+  const averageSessionDuration = sessionDurations.length > 0 ? 
+    Math.round(sessionDurations.reduce((sum, duration) => sum + duration, 0) / sessionDurations.length) : 0;
+  
+  return {
+    averagePageLoadTime,
+    averageSessionDuration,
+    fastestPageLoad: pageLoadTimes.length > 0 ? Math.min(...pageLoadTimes) : 0,
+    slowestPageLoad: pageLoadTimes.length > 0 ? Math.max(...pageLoadTimes) : 0,
+    totalPageLoads: pageLoadTimes.length
+  };
+}
+
+// Enhanced Analytics Functions
+function analyzeTimePatterns(data) {
+  const timeSlots = {
+    '00-06': 0, '06-12': 0, '12-18': 0, '18-24': 0
+  };
+  
+  // Analyze page visits by time
+  Object.values(data.pages || {}).forEach(page => {
+    page.visits?.forEach(visit => {
+      const hour = new Date(visit.timestamp).getHours();
+      if (hour >= 0 && hour < 6) timeSlots['00-06']++;
+      else if (hour >= 6 && hour < 12) timeSlots['06-12']++;
+      else if (hour >= 12 && hour < 18) timeSlots['12-18']++;
+      else timeSlots['18-24']++;
+    });
+  });
+  
+  // Analyze clicks by time
+  Object.values(data.clicks || {}).forEach(click => {
+    click.clicks?.forEach(clickEvent => {
+      const hour = new Date(clickEvent.timestamp).getHours();
+      if (hour >= 0 && hour < 6) timeSlots['00-06']++;
+      else if (hour >= 6 && hour < 12) timeSlots['06-12']++;
+      else if (hour >= 12 && hour < 18) timeSlots['12-18']++;
+      else timeSlots['18-24']++;
+    });
+  });
+  
+  return {
+    timeSlots,
+    peakHour: Object.entries(timeSlots).reduce((max, [hour, count]) => 
+      count > max.count ? { hour, count } : max, { hour: '', count: 0 }
+    )
+  };
+}
+
+function analyzeGeographicData(data) {
+  const locations = [];
+  
+  Object.values(data.deviceinfo || {}).forEach(device => {
+    if (device.location) {
+      locations.push({
+        lat: device.location.latitude,
+        lng: device.location.longitude,
+        timestamp: device.createdAt
+      });
+    }
+  });
+  
+  return {
+    totalLocations: locations.length,
+    uniqueLocations: [...new Set(locations.map(l => `${l.lat},${l.lng}`))].length,
+    locations
+  };
+}
+
+function analyzeSessionPatterns(data) {
+  const sessions = {};
+  
+  Object.values(data.userjourney || {}).forEach(journey => {
+    const date = new Date(journey.startTime).toDateString();
+    if (!sessions[date]) sessions[date] = [];
+    sessions[date].push(journey);
+  });
+  
+  return {
+    totalSessions: Object.values(data.userjourney || {}).length,
+    sessionsByDate: sessions,
+    averageSessionsPerDay: Object.keys(sessions).length > 0 ? 
+      Object.values(data.userjourney || {}).length / Object.keys(sessions).length : 0
+  };
+}
+
+function analyzeConversionFunnel(data) {
+  const routes = [];
+  
+  Object.values(data.userjourney || {}).forEach(journey => {
+    routes.push(...journey.routes);
+  });
+  
+  const routeFrequency = {};
+  routes.forEach(route => {
+    routeFrequency[route] = (routeFrequency[route] || 0) + 1;
+  });
+  
+  return {
+    mostCommonEntryPoint: Object.entries(routeFrequency)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A',
+    routeFrequency,
+    totalRouteTransitions: routes.length
+  };
+}
+
+function generateInsights(data) {
+  const insights = [];
+  
+  // Page insights
+  const pages = data.pages || {};
+  if (Object.keys(pages).length > 0) {
+    const mostVisitedPage = Object.entries(pages).reduce((max, [page, data]) => {
+      return (data.visits?.length || 0) > (max.visits?.length || 0) ? { page, ...data } : max;
+    }, { page: '', visits: [] });
+    
+    if (mostVisitedPage.page) {
+      insights.push({
+        type: 'page',
+        message: `Most visited page: ${mostVisitedPage.page} with ${mostVisitedPage.visits?.length || 0} visits`,
+        priority: 'high'
+      });
+    }
+  }
+  
+  // Click insights
+  const clicks = data.clicks || {};
+  if (Object.keys(clicks).length > 0) {
+    const mostClickedButton = Object.entries(clicks).reduce((max, [button, data]) => {
+      return (data.clickCount || 0) > (max.clickCount || 0) ? { button, ...data } : max;
+    }, { button: '', clickCount: 0 });
+    
+    if (mostClickedButton.button) {
+      insights.push({
+        type: 'click',
+        message: `Most clicked button: ${mostClickedButton.button} with ${mostClickedButton.clickCount} clicks`,
+        priority: 'medium'
+      });
+    }
+  }
+  
+  // Device insights
+  const devices = data.deviceinfo || {};
+  if (Object.keys(devices).length > 0) {
+    const deviceEntries = Object.values(devices);
+    const platforms = {};
+    deviceEntries.forEach(device => {
+      const platform = device.platform || 'Unknown';
+      platforms[platform] = (platforms[platform] || 0) + 1;
+    });
+    
+    const mostCommonPlatform = Object.entries(platforms).reduce((max, [platform, count]) => {
+      return count > max.count ? { platform, count } : max;
+    }, { platform: '', count: 0 });
+    
+    if (mostCommonPlatform.platform) {
+      insights.push({
+        type: 'device',
+        message: `Most common platform: ${mostCommonPlatform.platform} (${mostCommonPlatform.count} users)`,
+        priority: 'low'
+      });
+    }
+  }
+  
+  // Journey insights
+  const journeys = data.userjourney || {};
+  if (Object.keys(journeys).length > 0) {
+    const journeyEntries = Object.values(journeys);
+    const averageJourneyDuration = Math.round(
+      journeyEntries.reduce((sum, journey) => sum + (journey.duration || 0), 0) / journeyEntries.length
+    );
+    
+    insights.push({
+      type: 'journey',
+      message: `Average user journey duration: ${averageJourneyDuration} seconds`,
+      priority: 'medium'
+    });
+  }
+  
+  return insights;
+}
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
