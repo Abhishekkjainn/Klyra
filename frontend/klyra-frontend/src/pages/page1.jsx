@@ -40,7 +40,7 @@ export default function Page1({ user, sessionLoading, refreshSession }){
        
      >
                 <img src="/doc.png" alt="Arrow" className="secondbuttonicon" />
-                <div className="secondbuttontag">View Documentation</div>
+                <Link to={'/documentation'} className="secondbuttontag">View Documentation</Link>
             </div>
         </div>
     </div>

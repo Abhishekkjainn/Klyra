@@ -7,6 +7,8 @@ import Login from './pages/login';
 import Dashboard from './pages/dashboard';
 import { useUserJourneyAnalytics, sendDeviceInfoAnalytics, useActiveUserTracker } from './functions';
 import usePageAnalytics from './functions';
+import AddFunctions from './pages/addfunctions';
+import Documentation from './pages/documentation';
 
 
 function App() {
@@ -68,6 +70,8 @@ function App() {
         <Route path="/signup" element={<Signup user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
         <Route path="/login" element={<Login user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
         <Route path="/dashboard" element={<Dashboard user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
+        <Route path="/addfunctions" element={<AddFunctions user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
+        <Route path="/documentation" element={<Documentation user={user} sessionLoading={sessionLoading} refreshSession={refreshSession} />}/>
         {/* Add more routes here as needed */}
       </Routes>
     </BrowserRouter>

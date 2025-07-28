@@ -15,14 +15,14 @@ export default function Header(){
             <img src="/dashboard.png" alt="" className="linkicon" />
             <div className="linktag">Dashboard</div>
           </Link>
-          <div className="link">
+          <Link to={"/documentation"} className="link">
             <img src="/documentation.png" alt="" className="linkicon" />
             <div className="linktag">Documentation</div>
-          </div>
-          <div className="link">
+          </Link>
+          <Link to={"/addfunctions"} className="link">
             <img src="/contact.png" alt="" className="linkicon" />
-            <div className="linktag">Contact</div>
-          </div>
+            <div className="linktag">Function Generator</div>
+          </Link>
           <div className="link">
             <img src="/about.png" alt="" className="linkicon" />
             <div className="linktag">About Us</div>
